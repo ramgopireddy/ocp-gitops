@@ -12,7 +12,7 @@ The output should show one or more values, like:
 > [lab-user@bastion ~]$ <br>
 
 ### Create the subscriptions: 
-Using this channel value, create the subscription manifest for Installing the OpenShift GitOps Operator as shown below. Instead of creating a new namespace and operatorgroup, the default created namespace called "openshift-operators" can be used as the GitOps operator supports AllNamespace as targets: 
+Using this channel value, create the subscription manifest for Installing the OpenShift GitOps Operator as shown below. Instead of creating a new namespace and operatorgroup, the default created namespace called "openshift-operators" can be used as the GitOps operator supports All Namespace as targets: 
 
 ```
 cat << EOF | oc apply -f -
