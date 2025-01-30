@@ -6,7 +6,7 @@
 ```
 oc get packagemanifests.packages.operators.coreos.com -n openshift-marketplace openshift-gitops-operator -o jsonpath='{.status.defaultChannel}{"\n"}'
 ```
-The outout should show one or more values, like: 
+The output should show one or more values, like: 
 > [lab-user@bastion ~]$ oc get packagemanifests.packages.operators.coreos.com -n openshift-marketplace openshift-gitops-operator -o jsonpath='{.status.defaultChannel}{"\n"}'<br>
 > **latest**<br>
 > [lab-user@bastion ~]$ <br>
@@ -22,7 +22,7 @@ metadata:
   name: openshift-gitops-operator
   namespace: openshift-operators
 spec:
-  chanenel: latest
+  channel: latest
   installPlanApproval: Automatic
   name: openshift-gitops-operator
   source: redhat-operators
@@ -30,13 +30,13 @@ spec:
 EOF
 ```
 ### Authorizing GitOps ServiceAccount:  
-Upon installation, OpenShift GitOps Operator creates namespace `openshift-gitops` and a service account called `openshift-gitops-argocd-application-controller` in that namespace. This serviceaccount is used to apply the manifests on the cluster. While this account has sufficient privilages in that `openshift-gitops` namespace, it doesn't have privilages in other namespaces. 
+Upon installation, OpenShift GitOps Operator creates namespace `openshift-gitops` and a service account called `openshift-gitops-argocd-application-controller` in that namespace. This `serviceaccount` is used to apply the manifests on the cluster. While this account has sufficient privileges in that `openshift-gitops` namespace, it doesn't have privileges in other namespaces. 
 
-Since we want to create various resources with the objective of understanding the GitOps applications and how they work, we can go ahead and give this service account a cluster-admin level priviage.
+Since we want to create various resources with the objective of understanding the GitOps applications and how they work, we can go ahead and give this service account a cluster-admin level privilege.
 
 > **NOTE** in a production environment, you may need to be more restrictive about the role that you bind to this service account and the namespaces you give it access to.
 
-User the following command to give this service account cluster wide admin role: 
+Use the following command to give this service account cluster wide admin role: 
 
 ```
 oc create clusterrolebinding gitops-scc-binding --clusterrole cluster-admin  --serviceaccount openshift-gitops:openshift-gitops-argocd-application-controller
@@ -71,7 +71,7 @@ openshift-gitops-server                      1/1     1            1           8m
 ```
 
 ## Accessing the GitOps Operator's GUI:
-To access the GUI, you will need a URL and credentials. These can be retrieved using the followings: 
+To access the GUI, you will need a URL and credentials. These can be retrieved using the following: 
 
 ### Get Routes:
 To find the URL to access, use the following command: 
@@ -96,14 +96,14 @@ Access ArgoCD GUI using the information above. The GUI might look like the follo
 ![gitops_1](images/gitops_1.png)
 
 ## GitOps - the very first time:
-The GitOps Operator defines a CR caleld "Applications". Applications are used to sync the running cluster with the manifests defined on Git. The following figure describes the fields in the Application CR definition: 
+The GitOps Operator defines a CR called "Applications". Applications are used to sync the running cluster with the manifests defined on Git. The following figure describes the fields in the Application CR definition: 
 
 ![gitops_1](images/gitops_app.png)
 
-> **TIP** OpenShift GitOps Operator is the productized version of "ArgoCD". Hence the terms are used interchangibly
+> **TIP** OpenShift GitOps Operator is the productized version of "ArgoCD". Hence the terms are used interchangeably
 
 ### Your first application: 
-Lets create a simple application that will create a namespace and run a pod in that namespace. The manifests for these have already been defined [here](https://github.com/git-shassan/ocp-gitops/tree/main/manifests/set0). All the application has to do is point to the repository and let GitOps do its magic. Create the applicaiton as shown here:
+Let's create a simple application that will create a namespace and run a pod in that namespace. The manifests for these have already been defined [here](https://github.com/git-shassan/ocp-gitops/tree/main/manifests/set0). All the application has to do is point to the repository and let GitOps do its magic. Create the application as shown here:
 
 ```
 cat << EOF | oc apply -f -
@@ -133,7 +133,7 @@ EOF
 ```
 
 ### Verifying Application's status using OC command:
-Once the application is created, you can view its staus progress as seen here:
+Once the application is created, you can view its status progress as seen here:
 
 ```
 oc get apps -n openshift-gitops first-app 
@@ -144,14 +144,14 @@ oc get apps -n openshift-gitops first-app
 NAME        SYNC STATUS   HEALTH STATUS
 first-app   Synced        Healthy
 ```
-The application's `Healthy` status indicates that the namesapce and pod has been created successfully. Confirm this as shown here:
+The application's `Healthy` status indicates that the namespace and pod have been created successfully. Confirm this as shown here:
 
 ```
 oc get pods -n first-gitops-space
 NAME   READY   STATUS    RESTARTS   AGE
 pod    1/1     Running   0          4m15s
 ```
-You can try deleting this pod, but since since Git is the source of truth, and the pod definition still exists on Git, the pod will get recreated as shown here: 
+You can try deleting this pod, but since Git is the source of truth, and the pod definition still exists on Git, the pod will get recreated as shown here: 
 
 ```
 [lab-user@bastion ~]$ oc delete pods -n first-gitops-space pod 
@@ -168,17 +168,17 @@ The application's status and the CRs it created can be easily verified on the GU
 ![gitops_1](images/gitops_app2.png)
 
 ## Order of applying CRs -  ArgoCD SyncWaves:
-The previous example was simple and easy. However, even in this simple set of CRs, there has to be an sequence for successfully applying them. If the GitOps tries to create the Pod before creating the namespace, then it would fail. 
-The GitOps Operator is aware that certain things go in certain order, and takes care of that for you. However, in many cases (like in case of Custom defined resources) it wont be able to make that decision. In those cases, you can provide it guidance by assosiating a number with the manifest. This number, called "SyncWave" helps the operator determine the sequence for applying the various manifests it sees on Git. 
+The previous example was simple and easy. However, even in this simple set of CRs, there has to be a sequence for successfully applying them. If the GitOps tries to create the Pod before creating the namespace, then it will fail. 
+The GitOps Operator is aware that certain things go in certain order, and takes care of that for you. However, in many cases (like in case of Custom defined resources) it won't be able to make that decision. In those cases, you can provide it guidance by associating a number with the manifest. This number, called "SyncWave" helps the operator determine the sequence for applying the various manifests it sees on Git. 
 
-Additionally, the operator can categorize the manifests in three `Phases`: PreSync, Sync, and PostSync. By default, everything is in the `Sync` category. Manifests in each category are individually sorted based on their SyncWave (defaylt SyncWave value is 0) 
+Additionally, the operator can categorize the manifests into three `Phases`: PreSync, Sync, and PostSync. By default, everything is in the `Sync` category. Manifests in each category are individually sorted based on their SyncWave (default SyncWave value is 0) 
 
 Combining these sorting mechanisms, the GitOps operator uses the following order to determine the order in which the manifest should be applied:
-* The Phase that they’re in, i.e. "Pre-Sync", "Sync", or "Post-Sync". Manifests in one has have to be successfully applied before the operator moves to the next Phase.
+* The Phase that they’re in, i.e. "Pre-Sync", "Sync", or "Post-Sync". Manifests in one have to be successfully applied before the operator moves to the next Phase.
 * The "Syncwave" value defined in the resource's annotation, starting from the lowest value to the highest
-* If both of the above matcgm between two manifests, then the tie breaker is the CR or `kind` value.  Namespaces first, then services, then deployments, etc …​ (this is what enabled our first application to work without providing any sorting guidance) 
-* The final tie breaker, if all else matches, is the name of the manifest in ascending order 
-ascending order
+* If both of the above match between two manifests, then the tie breaker is the CR or `kind` value.  Namespaces first, then services, then deployments, etc …​ (this is what enabled our first application to work without providing any sorting guidance) 
+* The final tiebreaker, if all else matches, is the name of the manifest in ascending order 
+
 
 ### More about Sync Phases: 
 
@@ -190,7 +190,7 @@ metadata:
 ```
 The purpose of the phase types is: 
 * PreSync:  Is prioritized to be applied before resources in "Sync" phase are 	applied
- * Sync:  Resources in this phase are allied after all applications in "PreSync" 	phases have been successfully applied and reached Healthy state
+ * Sync:  Resources in this phase are allied after all applications in "PreSync" 	phases have been successfully applied and reached a Healthy state
 * PostSync: Resources in this phase will run after successful "sync"  (e.g. 	email notifications)
 
 The following figure demonstrates this concept visually: 
@@ -210,7 +210,7 @@ All manifests have a wave of zero by default. Wave value can be set using `metad
 ```
 
 the GitOps Operator (ArgoCD) will apply the lowest value, and make sure it returns a "healthy" status before moving on.
-Argo CD won’t apply the next manifest until the previous reports "healthy". 
+Argo CD won’t apply the next manifest until the previous reports are "healthy". 
 
 The following figure demonstrates this concept visually: 
 
@@ -218,7 +218,7 @@ The following figure demonstrates this concept visually:
 
 (Figure sourced from this ![site](https://redhat-scholars.github.io/argocd-tutorial/argocd-tutorial/04-syncwaves-hooks.html))
 
-## Create Application to demonstrate SyncWaves:
+## Create an Application to demonstrate SyncWaves:
 
 To create an application demonstrating Sync Waves, use the following:
 ```
@@ -268,7 +268,7 @@ This application will demonstrate the use of SyncWaves. The applications being c
 | powerpod2.yaml | Job | testjob1-2 | argotest1-2 | Sync | 303 | |
 
 
-Run the application using following command: 
+Run the application using the following command: 
 ```
 oc apply -f app1.yaml 
 ```
@@ -276,15 +276,15 @@ Now observe that the application shows up on ArgoCD's GUI:
 
 ![gitops_2](images/gitops_2.png)
 
-The image shows that the application hasn't synced yet. That is because all the resources haven't been successfully applied. This is because "testjob1-1" is still running and hasn't reached a "Healthy" Status (its stutus will show as "Progressing")
+The image shows that the application hasn't synced yet. That is because all the resources haven't been successfully applied. This is because "testjob1-1" is still running and hasn't reached a "Healthy" Status (its status will show as "Progressing")
 
 Take a look at testjob1-1's logs, and it will show that the counter is still running: 
 
 ![gitops_3](images/gitops_3.png)
 
-Once the counter reaches 10, the job will complete, and now the next resource will be applied. The next resource happens to be creation of Namespace called "argotest1-2", based on SyncWave values as seen in the above table. Then the subsequenet one will be applied, and so on. 
+Once the counter reaches 10, the job will be completed, and now the next resource will be applied. The next resource is the creation of Namespace called "argotest1-2", based on SyncWave values as seen in the above table. Then the subsequent one will be applied, and so on. 
 
-Eventually, the application reaches a full sync status once all resources have reaached a Healthy status: 
+Eventually, the application reaches a full sync status once all resources have reached a Healthy status: 
 
 ![gitops_4](images/gitops_4.png)
 
@@ -299,7 +299,7 @@ Output will show the new application:
 
 
 ## Running ArgoCD Applications to demonstrate Phase Hooks:
-Now to demonstrate use of `Phases`, lets create another Application using the following: 
+Now to demonstrate the use of `Phases`, let's create another Application using the following: 
 ```
 cat << EOF > app2.yaml
 apiVersion: argoproj.io/v1alpha1
@@ -346,7 +346,7 @@ Now run the job using:
 oc apply -f app2.yaml 
 ```
 
-Looking the ArgoCD GUI, you will see that the job `presync1` is running and the other ones are waiting. This job had the lowest priority among the Pre-Sync phased jobs. As shown here, the logs of this job (visible by clicking on the job, and switching to `logs` tab), show that the counter is still running: 
+Looking at the ArgoCD GUI, you will see that the job `presync1` is running and the other ones are waiting. This job had the lowest priority among the Pre-Sync phased jobs. As shown here, the logs of this job (visible by clicking on the job, and switching to `logs` tab), show that the counter is still running: 
 
 ![gitops_5](images/gitops_5.png)
 
@@ -357,7 +357,7 @@ GUI will show this job to be running now:
 
 ![gitops_6](images/gitops_6.png)
 
-The job will never finish as it has infinite loop defined in the pod, and hence the job `testjob1` will never get to start. 
+The job will never finish as it has an infinite loop defined in the pod, and hence the job `testjob1` will never get to start. 
 
 As a result, this application will never reach a "Healthy" and "Sync" status. We can see that in the GUI, and also through CLI: 
 
